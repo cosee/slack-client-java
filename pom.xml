@@ -97,11 +97,11 @@
 
     <distributionManagement>
         <snapshotRepository>
-            <id>cosee-maven-repo</id>
+            <id>cosee-maven-repo-sing</id>
             <url>https://oss.sonatype.org/content/repositories/snapshots</url>
         </snapshotRepository>
         <repository>
-            <id>cosee-maven-repo</id>
+            <id>cosee-maven-repo-sing</id>
             <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/
             </url>
         </repository>
