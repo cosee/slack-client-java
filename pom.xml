@@ -3,21 +3,37 @@
          xmlns="http://maven.apache.org/POM/4.0.0"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <groupId>biz.cosee</groupId>
     <artifactId>slack-client-java</artifactId>
     <version>1.0</version>
     <packaging>jar</packaging>
 
-    <name>slack-client-java</name>
+    <name>${project.groupId}:${project.artifactId}</name>
     <description>A thin java wrapper around the Slack API</description>
     <url>https://github.com/cosee/slack-client-java</url>
 
     <licenses>
         <license>
             <name>MIT License</name>
-            <url>https://github.com/cosee/slack-client-java/blob/master/LICENSE</url>
+            <url>http://www.opensource.org/licenses/mit-license.php</url>
         </license>
     </licenses>
+
+    <developers>
+        <developer>
+            <name>Robin Ferrari</name>
+            <email>robin.ferrari@cosee.biz</email>
+            <organization>cosee GmbH</organization>
+            <organizationUrl>cosee.biz</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/cosee/slack-client-java.git</connection>
+        <developerConnection>scm:git:git://github.com/cosee/slack-client-java.git</developerConnection>
+        <url>https://github.com/cosee/slack-client-java</url>
+    </scm>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
