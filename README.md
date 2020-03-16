@@ -18,3 +18,13 @@ This slackclient is a module we use in one of our products. It has just the func
 - send a message to a user
 - find a user by its mail-address
 - invite user to a channel
+
+# Install over Maven
+
+```
+<dependency>
+  <groupId>biz.cosee</groupId>
+  <artifactId>slack-client-java</artifactId>
+  <version>1.0</version>
+</dependency>
+```
