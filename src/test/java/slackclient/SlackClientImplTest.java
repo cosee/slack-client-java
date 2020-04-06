@@ -55,7 +55,8 @@ public class SlackClientImplTest {
 
     @Test
     public void createSlackChannel() {
-        stubFor(post(urlEqualTo("/api/conversations.create?token=token&is_private=true&name=channelId")).willReturn(aResponse()
+        stubFor(post(urlEqualTo("/api/conversations.create?token=token&is_private=true&name=channelId"))
+                .willReturn(aResponse()
                 .withBody("{\"ok\":true}")));
         slackClient.createSlackChannel("channelId", true);
         verify(postRequestedFor(urlEqualTo("/api/conversations.create?token=token&is_private=true&name=channelId")));
@@ -84,7 +85,8 @@ public class SlackClientImplTest {
     }
 
     private void mockWireMockStubForGetChannelResponse() {
-        stubFor(post(urlEqualTo("/api/conversations.list?token=token&types=public_channel%2Cprivate_channel&limit=".concat(String.valueOf(1000))))
+        stubFor(post(urlEqualTo("/api/conversations.list?token=token&types=public_channel%2Cprivate_channel&limit="
+                .concat(String.valueOf(1000))))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -95,7 +97,8 @@ public class SlackClientImplTest {
 
     @Test
     public void setChannelTopic() {
-        stubFor(post(urlEqualTo("/api/conversations.setTopic?token=token&channel=channelId&topic=topic")).willReturn(aResponse()
+        stubFor(post(urlEqualTo("/api/conversations.setTopic?token=token&channel=channelId&topic=topic"))
+                .willReturn(aResponse()
                 .withBody("{\"ok\":true}")));
         slackClient.setChannelTopic("channelId", "topic");
         verify(postRequestedFor(urlEqualTo("/api/conversations.setTopic?token=token&channel=channelId&topic=topic")));
