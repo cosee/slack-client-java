@@ -74,7 +74,46 @@ public class SlackClientImplTest {
     public void containsChannelWithName() {
         mockWireMockStubForGetChannelResponse();
         assertTrue(slackClient.containsSlackChannelWithName("general"));
-        assertFalse(slackClient.containsSlackChannelWithName("asghr"));
+    }
+
+    @Test
+    public void containsChannelWithNamePaginationTest() {
+        mockWireMockStubForGetChannelResponse();
+        assertTrue(slackClient.containsSlackChannelWithName("pagetestchannel"));
+    }
+
+    @Test
+    public void handleEmptyCursorCorrectlyIfChannelDoesNotExists() {
+        mockWireMockStubForGetChannelResponse();
+        assertFalse(slackClient.containsSlackChannelWithName("thischanneldoesnotexist"));
+    }
+
+    private void mockWireMockStubForGetChannelResponse() {
+        mockWireMockStubForGetChannelWithNoCursor();
+        mockWireMockStubForGetChannelWithCursor();
+    }
+
+    private void mockWireMockStubForGetChannelWithNoCursor() {
+        stubFor(post(urlEqualTo("/api/conversations.list?token=token&types=public_channel%2Cprivate_channel&limit="
+                .concat(String.valueOf(100))))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(FileLoader.loadFile("slackChannelResponse.json"))
+                )
+        );
+    }
+
+    private void mockWireMockStubForGetChannelWithCursor() {
+        stubFor(post(urlEqualTo(("/api/conversations.list?token=token&cursor=dGVhbTpDMDYxRkE1UEI%3D&" +
+                "types=public_channel%2Cprivate_channel&limit=")
+                .concat(String.valueOf(100))))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(FileLoader.loadFile("slackChannelResponseNextPage.json"))
+                )
+        );
     }
 
     @Test
@@ -84,15 +123,17 @@ public class SlackClientImplTest {
         assertThat(response).isEqualTo("C012AB3CD");
     }
 
-    private void mockWireMockStubForGetChannelResponse() {
-        stubFor(post(urlEqualTo("/api/conversations.list?token=token&types=public_channel%2Cprivate_channel&limit="
-                .concat(String.valueOf(1000))))
-                .willReturn(aResponse()
-                        .withStatus(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody(FileLoader.loadFile("slackChannelResponse.json"))
-                )
-        );
+    @Test
+    public void getChannelIdByNameWithPagination() {
+        mockWireMockStubForGetChannelResponse();
+        String response = slackClient.getChannelIdByName("pagetestchannel").orElse("failed");
+        assertThat(response).isEqualTo("C012AB3CF");
+    }
+
+    @Test
+    public void getChannelIdForNotExistingChannelFails() {
+        mockWireMockStubForGetChannelResponse();
+        assertFalse(slackClient.getChannelIdByName("thischanneldoesnotexist").isPresent());
     }
 
     @Test
