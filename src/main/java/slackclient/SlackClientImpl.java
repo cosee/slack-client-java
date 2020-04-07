@@ -21,7 +21,7 @@ public class SlackClientImpl implements SlackClient {
 
     private final String slackUrl;
 
-    private static final int CHANNEL_LIST_FETCH_LIMIT = 1000;
+    private static final int CHANNEL_LIST_FETCH_LIMIT = 100;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -60,26 +60,48 @@ public class SlackClientImpl implements SlackClient {
 
     @Override
     public boolean containsSlackChannelWithName(String channelName) {
-        for (SlackChannel slackChannel : getSlackChannels()) {
+        SlackChannelResponse slackChannelResponse = getSlackChannels();
+        while (true) {
+            if (channelFoundInThisPage(channelName, slackChannelResponse)) return true;
+            if (noNextPage(slackChannelResponse)) return false;
+            else slackChannelResponse = getNextPage(slackChannelResponse);
+        }
+    }
+
+    private boolean channelFoundInThisPage(String channelName, SlackChannelResponse slackChannelResponse) {
+        for (SlackChannel slackChannel : slackChannelResponse.getChannels()) {
             if (slackChannel.getName().equals(channelName))
                 return true;
         }
-
         return false;
     }
 
-    private List<SlackChannel> getSlackChannels() {
+    private boolean noNextPage(SlackChannelResponse slackChannelResponse) {
+        return slackChannelResponse.getResponseMetadata().getNextCursor().isEmpty();
+    }
+
+    private SlackChannelResponse getNextPage(SlackChannelResponse slackChannelResponse) {
+        return getSlackChannels(slackChannelResponse.getResponseMetadata().getNextCursor());
+    }
+
+    private SlackChannelResponse getSlackChannels() {
+        return getSlackChannels("");
+    }
+
+    private SlackChannelResponse getSlackChannels(String cursor) {
         Map<String, String> parameters = new HashMap<>();
         parameters.put("types", "public_channel,private_channel");
         parameters.put("limit", Integer.toString(CHANNEL_LIST_FETCH_LIMIT));
+        if (!cursor.isEmpty())
+            parameters.put("cursor", cursor);
         String jsonResponse = placeGenericRequest("conversations.list", parameters);
 
-        return extractChannelsFromResponse(jsonResponse);
+        return extractResponse(jsonResponse);
     }
 
-    private List<SlackChannel> extractChannelsFromResponse(String jsonResponse) {
+    private SlackChannelResponse extractResponse(String jsonResponse) {
         try {
-            return objectMapper.readValue(jsonResponse, SlackChannelResponse.class).getChannels();
+            return objectMapper.readValue(jsonResponse, SlackChannelResponse.class);
         } catch (IOException e) {
             throw new SlackClientException(
                     String.format("Could not parse Json to SlackChannelResponse. Json: %s", jsonResponse));
@@ -88,11 +110,20 @@ public class SlackClientImpl implements SlackClient {
 
     @Override
     public Optional<String> getChannelIdByName(String channelName) {
-        for (SlackChannel channel : getSlackChannels()) {
+        SlackChannelResponse slackChannelResponse = getSlackChannels();
+        while (true) {
+            Optional<String> channel = searchForChannelIdInPage(channelName, slackChannelResponse);
+            if (channel.isPresent()) return channel;
+            if (noNextPage(slackChannelResponse)) return Optional.empty();
+            else slackChannelResponse = getNextPage(slackChannelResponse);
+        }
+    }
+
+    private Optional<String> searchForChannelIdInPage(String channelName, SlackChannelResponse slackChannelResponse) {
+        for (SlackChannel channel : slackChannelResponse.getChannels()) {
             if (channel.getName().equals(channelName))
                 return Optional.of(channel.getId());
         }
-
         return Optional.empty();
     }
 
