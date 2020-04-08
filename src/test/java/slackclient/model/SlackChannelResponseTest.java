@@ -7,9 +7,6 @@ import org.junit.Test;
 import slackclient.FileLoader;
 import slackclient.model.SlackChannel.*;
 
-import java.io.IOException;
-import java.util.List;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class SlackChannelResponseTest {

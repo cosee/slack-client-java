@@ -3,6 +3,7 @@ package slackclient;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import slackclient.exception.SlackClientException;
+import slackclient.model.ResponseMetadata;
 import slackclient.model.SlackChannel.SlackChannel;
 import slackclient.model.SlackChannel.SlackChannelResponse;
 import slackclient.model.SlackUser.SlackUser;
@@ -21,7 +22,7 @@ public class SlackClientImpl implements SlackClient {
 
     private final String slackUrl;
 
-    private static final int CHANNEL_LIST_FETCH_LIMIT = 100;
+    private static final int FETCH_LIMIT = 100;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -63,9 +64,24 @@ public class SlackClientImpl implements SlackClient {
         SlackChannelResponse slackChannelResponse = getSlackChannels();
         while (true) {
             if (channelFoundInThisPage(channelName, slackChannelResponse)) return true;
-            if (noNextPage(slackChannelResponse)) return false;
-            else slackChannelResponse = getNextPage(slackChannelResponse);
+            if (noNextPage(slackChannelResponse.getResponseMetadata())) return false;
+            else slackChannelResponse = getNextPageOfSlackChannelResponse(slackChannelResponse);
         }
+    }
+
+    private SlackChannelResponse getSlackChannels() {
+        return getSlackChannels("");
+    }
+
+    private SlackChannelResponse getSlackChannels(String cursor) {
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put("types", "public_channel,private_channel");
+        parameters.put("limit", Integer.toString(FETCH_LIMIT));
+        if (!cursor.isEmpty())
+            parameters.put("cursor", cursor);
+        String jsonResponse = placeGenericRequest("conversations.list", parameters);
+
+        return extractResponse(jsonResponse);
     }
 
     private boolean channelFoundInThisPage(String channelName, SlackChannelResponse slackChannelResponse) {
@@ -76,27 +92,12 @@ public class SlackClientImpl implements SlackClient {
         return false;
     }
 
-    private boolean noNextPage(SlackChannelResponse slackChannelResponse) {
-        return slackChannelResponse.getResponseMetadata().getNextCursor().isEmpty();
+    private boolean noNextPage(ResponseMetadata responseMetadata) {
+        return responseMetadata.getNextCursor().isEmpty();
     }
 
-    private SlackChannelResponse getNextPage(SlackChannelResponse slackChannelResponse) {
+    private SlackChannelResponse getNextPageOfSlackChannelResponse(SlackChannelResponse slackChannelResponse) {
         return getSlackChannels(slackChannelResponse.getResponseMetadata().getNextCursor());
-    }
-
-    private SlackChannelResponse getSlackChannels() {
-        return getSlackChannels("");
-    }
-
-    private SlackChannelResponse getSlackChannels(String cursor) {
-        Map<String, String> parameters = new HashMap<>();
-        parameters.put("types", "public_channel,private_channel");
-        parameters.put("limit", Integer.toString(CHANNEL_LIST_FETCH_LIMIT));
-        if (!cursor.isEmpty())
-            parameters.put("cursor", cursor);
-        String jsonResponse = placeGenericRequest("conversations.list", parameters);
-
-        return extractResponse(jsonResponse);
     }
 
     private SlackChannelResponse extractResponse(String jsonResponse) {
@@ -114,8 +115,8 @@ public class SlackClientImpl implements SlackClient {
         while (true) {
             Optional<String> channel = searchForChannelIdInPage(channelName, slackChannelResponse);
             if (channel.isPresent()) return channel;
-            if (noNextPage(slackChannelResponse)) return Optional.empty();
-            else slackChannelResponse = getNextPage(slackChannelResponse);
+            if (noNextPage(slackChannelResponse.getResponseMetadata())) return Optional.empty();
+            else slackChannelResponse = getNextPageOfSlackChannelResponse(slackChannelResponse);
         }
     }
 
@@ -141,39 +142,60 @@ public class SlackClientImpl implements SlackClient {
     }
 
     @Override
-    public String postMessageToUser(String userId, String message) {
-        return postMessageToChannel(userId, message);
+    public Optional<String> findUserByEmail(String email) {
+        SlackUserResponse slackUserResponse = getSlackUsers();
+        while (true) {
+            Optional<String> slackUser = searchForUserIdInPage(email, slackUserResponse);
+            if (slackUser.isPresent()) return slackUser;
+            if (noNextPage(slackUserResponse.getResponseMetadata())) return Optional.empty();
+            else slackUserResponse = getNextPageOfSlackUserResponse(slackUserResponse);
+        }
     }
 
-    @Override
-    public Optional<String> findUserByEmail(String email) {
-        for (SlackUser slackUser : getSlackUsers()) {
-            if (isUser(email, slackUser))
+    private SlackUserResponse getSlackUsers() {
+        return getSlackUsers("");
+    }
+
+    private SlackUserResponse getSlackUsers(String cursor) {
+        Map<String, String> parameters = new HashMap<>();
+        parameters.put("limit", Integer.toString(FETCH_LIMIT));
+        if (!cursor.isEmpty())
+            parameters.put("cursor", cursor);
+        String jsonResponse = placeGenericRequest("users.list", parameters);
+
+        return extractSlackUsersFromResponse(jsonResponse);
+    }
+
+    private Optional<String> searchForUserIdInPage(String email, SlackUserResponse slackUserResponse) {
+        for (SlackUser slackUser : slackUserResponse.getSlackUsers()) {
+            if (isSearchedUser(email, slackUser))
                 return Optional.of(slackUser.getId());
         }
-
         return Optional.empty();
     }
 
-    private List<SlackUser> getSlackUsers() {
-        String slackChannelResponse = placeGenericRequest("users.list", new HashMap<>());
-
-        return extractSlackUsersFromResponse(slackChannelResponse);
+    private SlackUserResponse getNextPageOfSlackUserResponse(SlackUserResponse slackUserResponse) {
+        return getSlackUsers(slackUserResponse.getResponseMetadata().getNextCursor());
     }
 
-    private List<SlackUser> extractSlackUsersFromResponse(String slackChannelResponse) {
+    private SlackUserResponse extractSlackUsersFromResponse(String slackChannelResponse) {
         try {
-            return objectMapper.readValue(slackChannelResponse, SlackUserResponse.class).getSlackUsers();
+            return objectMapper.readValue(slackChannelResponse, SlackUserResponse.class);
         } catch (IOException e) {
             throw new SlackClientException(
                     String.format("Could not parse Json to SlackUserResponse. Json: %s", slackChannelResponse));
         }
     }
 
-    private boolean isUser(String email, SlackUser slackUser) {
+    private boolean isSearchedUser(String email, SlackUser slackUser) {
         return
                 slackUser.getSlackUserProfile().getEmail() != null &&
                         slackUser.getSlackUserProfile().getEmail().equals(email);
+    }
+
+    @Override
+    public String postMessageToUser(String userId, String message) {
+        return postMessageToChannel(userId, message);
     }
 
     @Override

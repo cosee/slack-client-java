@@ -94,8 +94,7 @@ public class SlackClientImplTest {
     }
 
     private void mockWireMockStubForGetChannelWithNoCursor() {
-        stubFor(post(urlEqualTo("/api/conversations.list?token=token&types=public_channel%2Cprivate_channel&limit="
-                .concat(String.valueOf(100))))
+        stubFor(post(urlEqualTo("/api/conversations.list?token=token&types=public_channel%2Cprivate_channel&limit=100"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -106,8 +105,7 @@ public class SlackClientImplTest {
 
     private void mockWireMockStubForGetChannelWithCursor() {
         stubFor(post(urlEqualTo(("/api/conversations.list?token=token&cursor=dGVhbTpDMDYxRkE1UEI%3D&" +
-                "types=public_channel%2Cprivate_channel&limit=")
-                .concat(String.valueOf(100))))
+                "types=public_channel%2Cprivate_channel&limit=100")))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -176,14 +174,43 @@ public class SlackClientImplTest {
         assertThat(result).isEqualTo("W012A3CDE");
     }
 
+
     private void mockStubForFindUserByEmail() {
-        stubFor(post(urlEqualTo("/api/users.list?token=token"))
+        mockStubForFindUserByEmailNoCursor();
+        mockStubForFindUserByEmailWithCursor();
+    }
+
+    private void mockStubForFindUserByEmailNoCursor() {
+        stubFor(post(urlEqualTo("/api/users.list?token=token&limit=100"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
                         .withBody(FileLoader.loadFile("slackUserResponse.json"))
                 )
         );
+    }
+
+    private void mockStubForFindUserByEmailWithCursor() {
+        stubFor(post(urlEqualTo("/api/users.list?token=token&cursor=dXNlcjpVMEc5V0ZYTlo%3D&limit=100"))
+                .willReturn(aResponse()
+                        .withStatus(200)
+                        .withHeader("Content-Type", "application/json")
+                        .withBody(FileLoader.loadFile("slackUserResponseNextPage.json"))
+                )
+        );
+    }
+
+    @Test
+    public void findSlackUserByEmailInNextPage() {
+        mockStubForFindUserByEmail();
+        String result = slackClient.findUserByEmail("turing@ghostbusters.example.com").orElse("failed");
+        assertThat(result).isEqualTo("W012A3CDF");
+    }
+
+    @Test
+    public void findNonExsitingUserByEmailFails() {
+        mockStubForFindUserByEmail();
+        assertFalse(slackClient.findUserByEmail("NotExistingUser@ghostbusters.example.com").isPresent());
     }
 
     @Test

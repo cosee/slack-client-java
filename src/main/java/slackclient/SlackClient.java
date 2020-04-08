@@ -18,9 +18,9 @@ public interface SlackClient {
 
     String setChannelTopic(String channelId, String topic);
 
-    String postMessageToUser(String userId, String message);
-
     Optional<String> findUserByEmail(String email);
+
+    String postMessageToUser(String userId, String message);
 
     String inviteUserToChannel(String userId, String channelId);
 
