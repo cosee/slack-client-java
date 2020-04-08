@@ -25,6 +25,6 @@ This slackclient is a module we use in one of our products. It has just the func
 <dependency>
   <groupId>biz.cosee</groupId>
   <artifactId>slack-client-java</artifactId>
-  <version>1.0</version>
+  <version>1.1</version>
 </dependency>
 ```
